@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Focus Timer Pro</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body,html{
+  height:100%;
+  background:#111;
+  color:#00ff88;
+  font-family:Segoe UI,Arial,sans-serif;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  overflow:hidden
+}
+
+.stack{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:16px;
+}
+
+.controls{
+  display:flex;
+  gap:8px;
+  z-index:10;
+  flex-wrap:wrap;
+  justify-content:center;
+}
+
+input{
+  width:70px;
+  font-size:1rem;
+  padding:8px;
+  text-align:center;
+  background:#222;
+  color:#fff;
+  border:2px solid #333;
+8px;
+  border-radius:8px
+}
+
+button{
+  padding:8px 14px;
+  cursor:pointer;
+  background:#00ff88;
+  color:#000;
+  border:none;
+  border-radius:8px;
+  font-weight:bold
+}
+
+.timer-container{
+  border:8px solid #00ff88;
+  padding:40px 60px;
+  border-radius:30px;
+  background:rgba(0,255,136,.05);
+  box-shadow:0 0 50px rgba(0,255,136,.2)
+}
+
+#timerDisplay{
+  font-size:18vw;
+  font-weight:900;
+  font-family:'Courier New',monospace;
+  cursor:pointer
+}
+
+.finished{
+  color:#ff4444!important;
+  border-color:#ff4444!important;
+  animation:blink .6s infinite
+}
+
+@keyframes blink{50%{opacity:.3;transform:scale(.98)}}
+
+.corner{
+  position:fixed;
+  right:20px;
+  bottom:20px;
+  background:#000;
+  color:lime;
+  padding:8px 14px;
+  border-radius:8px;
+  font-size:16px
+}
+
+.clock{
+  position:fixed;
+  right:20px;
+  top:20px;
+  text-align:right;
+  color:#fff;
+  font-size:14px
+}
+</style>
+</head>
+<body>
+
+<div class="stack">
+  <div class="controls" id="controls">
+    <input type="number" id="h" placeholder="HH">
+    <input type="number" id="m" placeholder="MM">
+    <input type="number" id="s" placeholder="SS">
+    <!-- rounds input removed -->
+    <button onclick="startTimer()">SET TIMER</button>
+  </div>
+
+  <div class="timer-container" id="box">
+    <div id="timerDisplay">00:00:00</div>
+  </div>
+</div>
+
+<div class="corner" id="cornerDisplay">Total Focus: 00:00:00</div>
+<div class="clock" id="clock"></div>
+
+<script>
+let countdown, beepInterval;
+const display=document.getElementById('timerDisplay');
+const box=document.getElementById('box');
+const controls=document.getElementById('controls');
+const corner=document.getElementById('cornerDisplay');
+const clock=document.getElementById('clock');
+
+let totalSeconds=0;
+let baseSeconds=0;
+let totalFocusSeconds = localStorage.getItem("focusTime")
+  ? parseInt(localStorage.getItem("focusTime")) : 0;
+
+function playBeepLoop(){
+  beepInterval=setInterval(()=>{
+    const ctx=new (window.AudioContext||window.webkitAudioContext)();
+    const osc=ctx.createOscillator();
+    const gain=ctx.createGain();
+    osc.connect(gain);gain.connect(ctx.destination);
+    osc.frequency.value=500;gain.gain.value=.1;
+    osc.start();osc.stop(ctx.currentTime+.5);
+  },700);
+}
+
+function stopBeep(){
+  clearInterval(beepInterval);
+}
+
+function updateDisplay(){
+  let h=Math.floor(totalSeconds/3600);
+  let m=Math.floor((totalSeconds%3600)/60);
+  let s=totalSeconds%60;
+  display.innerText=
+    `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+function updateCorner(){
+  let h=Math.floor(totalFocusSeconds/3600);
+  let m=Math.floor((totalFocusSeconds%3600)/60);
+  let s=totalFocusSeconds%60;
+  corner.innerText=
+    `Total Focus: ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  localStorage.setItem("focusTime", totalFocusSeconds);
+}
+
+function startTimer(){
+  clearInterval(countdown);
+  stopBeep();
+
+  let h=parseInt(document.getElementById('h').value)||0;
+  let m=parseInt(document.getElementById('m').value)||0;
+  let s=parseInt(document.getElementById('s').value)||0;
+
+  baseSeconds=(h*3600)+(m*60)+s;
+  totalSeconds=baseSeconds;
+  if(totalSeconds<=0)return;
+
+  display.classList.remove('finished');
+  box.classList.remove('finished');
+  controls.style.opacity="0.4";
+  updateDisplay();
+
+  countdown=setInterval(()=>{
+    if(totalSeconds<=0){
+      clearInterval(countdown);
+
+      totalFocusSeconds += baseSeconds;
+      updateCorner();
+
+      display.classList.add('finished');
+      box.classList.add('finished');
+      playBeepLoop();
+      return;
+    }
+    totalSeconds--;
+    updateDisplay();
+  },1000);
+}
+
+document.body.addEventListener("click", ()=>{
+  if(beepInterval){
+    stopBeep();
+    controls.style.opacity="1";
+  }
+});
+
+function updateClock(){
+  const now=new Date();
+  clock.innerHTML=
+    now.toLocaleDateString('en-US',{weekday:'short',year:'numeric',month:'short',day:'numeric'})
+    +"<br>"+now.toLocaleTimeString('en-US');
+}
+setInterval(updateClock,1000);
+updateClock();
+updateCorner();
+</script>
+
+</body>
+</html>
